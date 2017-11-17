@@ -1,0 +1,49 @@
+
+
+/* ==========================================================================
+   Author's custom styles
+   ========================================================================== */
+html, body {
+  height: 100%;
+  width: 100%;
+}
+#health {
+  position: absolute;
+  text-align: center;
+  font-size: 2em;
+  bottom: 0;
+  left: 50%;
+}
+#health span {
+  transform: translateX(-50%);
+}
+.scene {
+  height: 100%;
+  width: 100%;
+}
+#hazard1, #hazard2 {
+  width: 50%;
+  height: 100%;
+  float: left;
+}
+#selectHazard .value {
+  position: absolute;
+  top: 0;
+}
+#selectHazard .freeactions {
+  position: absolute;
+  top: 20px;
+}
+#selectHazard .reward {
+  position: absolute;
+  bottom: 0;
+  height:20px;
+  width: 20px;
+  background-color: #837613;
+}
+#hazard1 .value, #hazard1 .freeactions, #hazard1 .reward {
+  left: 0;
+}
+#hazard2 .value, #hazard2 .freeactions, #hazard2 .reward {
+  right: 0;
+}
