@@ -26,6 +26,9 @@ html, body {
   height: 100%;
   float: left;
 }
+#selectHazard {
+  background: url(http://via.placeholder.com/480x120) no-repeat center bottom;
+}
 #selectHazard .value {
   position: absolute;
   top: 0;
@@ -36,7 +39,7 @@ html, body {
 }
 #selectHazard .reward {
   position: absolute;
-  bottom: 0;
+  top: 220px;
   height:20px;
   width: 20px;
   background-color: #837613;
@@ -46,4 +49,42 @@ html, body {
 }
 #hazard2 .value, #hazard2 .freeactions, #hazard2 .reward {
   right: 0;
+}
+#battleHazard .value {
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: 2em;
+}
+#battleHazard .skills {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20%;
+  height: 100%;
+  overflow: auto;
+}
+#battleHazard .performAction {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: 2em;
+  width: 50px;
+  height: 50px;
+  background-color: purple;
+  color: #fff;
+  text-align: center;
+  line-height: 50px;
+}
+#battleHazard .surrender {
+  position: absolute;
+  right: 0;
+  bottom: 50px;
+  font-size: 2em;
+  width: 50px;
+  height: 50px;
+  background-color: red;
+  color: #fff;
+  text-align: center;
+  line-height: 50px;
 }

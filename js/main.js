@@ -1,3 +1,6 @@
+function getKeyFromValue(obj, value) {
+    return Object.keys(obj)[Object.values(obj).indexOf(value)];
+}
 function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
 
@@ -85,7 +88,7 @@ function setup() {
   for (let i = 0; i < 8; i++) {
     game.actions.push(new Action("0", 0));
   }
-  game.actions.push(new Action("0+2LIFE", 1, new ActionSkill(Skill.LIFE, 2)));
+  game.actions.push(new Action("0+2LIFE", 0, new ActionSkill(Skill.LIFE, 2)));
   for (let i = 0; i < 5; i++) {
       game.actions.push(new Action("-1", -1));
   }
@@ -169,7 +172,10 @@ function setupUI() {
       },
       battle: {
         bg: $("#battleHazard"),
-
+        value: $("#battleHazard .value"),
+        performAction: $("#battleHazard .performAction"),
+        surrender: $("#battleHazard .surrender"),
+        skills: $("#battleHazard .skills ul")
       }
     }
   };
@@ -181,19 +187,121 @@ function showHealth() {
 function showStage() {
   $(document.body).css({ "backgroundColor": StageColors[game.stage] });
 }
+function getAction() {
+  if (game.actions.length === 0) {
+    if (game.nerdactions.length > 0) {
+      game.actions = game.discardedactions;
+      game.actions.push(game.nerdactions.pop());
+      game.actions = shuffle(game.actions);
+      game.discardedactions = [];
+    } else {
+      return null;
+    }
+  }
+  return game.actions.pop();
+}
+function surrender(hazard, actions) {
+  hazardlife = getScoreDiff(hazard, actions);
+  console.log("Surrender", hazardlife);
+  game.discardedhazards.push(hazard);
+  beginDestroyingByLife(actions, hazardlife);
+}
+function beginDestroyingBySkill(actions, count) {
+  console.log("destrir por skill", count);
+}
+function beginDestroyingByLife(actions, life) {
+  console.log("destrir por vida", life);
+}
+function discardActions(actions) {
+  game.discardedactions = game.discardedactions.concat(actions);
+}
+function finishDestroying(actions) {
+  discardActions(actions);
+}
+function conquer(hazard, actions) {
+  console.log("conquer");
+  game.discardedactions.push(hazard.reward);
+  discardActions(actions);
+}
+function lose() {
+  console.log("LOSE");
+}
+function getScoreDiff(hazard, actions) {
+  return hazard.values[game.stage-1] - actions.reduce((sum, action) => sum + action.value, 0);
+}
 function battleHazard(hazard) {
-
+  console.log(hazard);
+  var actions = [];
+  var skills = [];
+  ui.scenes.battle.bg.css("background", "url(http://via.placeholder.com/480x320) no-repeat");
+  ui.scenes.battle.value.html(hazard.values[game.stage-1]);
+  ui.scenes.battle.performAction.html("FR").off("click").on("click", function(e) {
+    var isFreeAction = actions.length < hazard.freeactions;
+    if (!isFreeAction && game.health === 0) {
+      if (skills.length === 0 || confirm("aun puedes usar habilidades. quieres suic.?")) {
+        return lose();
+      }
+    }
+    if (!isFreeAction) {
+      game.health--;
+      showHealth();
+    }
+    var action = getAction();
+    console.log(action);
+    if (action) {
+      actions.push(action);
+      if (actions.length === 1) {
+        ui.scenes.battle.surrender.removeClass("hidden");
+      }
+      hazardlife = getScoreDiff(hazard, actions);
+      ui.scenes.battle.value.html(hazardlife);
+      if (hazardlife <= 0) {
+        conquer(hazard, actions);
+      } else {
+        // anadir skills al pool if any, las skills de las cartas aged se ejecutan auto
+        if (actions.length === hazard.freeactions) {
+          ui.scenes.battle.performAction.html("-1^");
+        }
+      }
+    } else {
+      console.log("the end");
+    }
+    e.stopPropagation();
+  });
+  ui.scenes.battle.surrender.addClass("hidden").off("click").on("click", function(e) {
+    if (actions.length < hazard.freeactions) {
+      confirm("Aun quedan gratis") && surrender(hazard, actions);
+    } else {
+      confirm("Seguro?") && surrender(hazard, actions);
+    }
+    e.stopPropagation();
+  });
+  ui.scenes.battle.bg.removeClass("hidden");
+  ui.scenes.select.bg.addClass("hidden");
 }
 function selectHazard(hazard1, hazard2) {
-  //ui.scenes.select.hazard1.bg =
+  ui.scenes.select.hazard1.bg.css("background", "url(http://via.placeholder.com/240x240) no-repeat");
+  ui.scenes.select.hazard1.bg.off("click").on("click", battleHazard.bind(this, hazard1));
   ui.scenes.select.hazard1.value.html(hazard1.values[game.stage-1]);
   ui.scenes.select.hazard1.freeactions.html(hazard1.freeactions);
-  //ui.scenes.select.hazard1.reward;
-  //ui.scenes.select.hazard1.bg =
+  ui.scenes.select.hazard1.reward.off("click").on("click", function(e) {
+    var s = `${hazard1.reward.name}\nVALUE: ${hazard1.reward.value}`;
+    s += hazard1.reward.skill ? `\nSKILL: ${getKeyFromValue(Skill, hazard1.reward.skill.skill)} ${hazard1.reward.skill.value}` : "";
+    alert(s);
+    e.stopPropagation();
+  });
+  ui.scenes.select.hazard2.bg.css("background", "url(http://via.placeholder.com/240x240) no-repeat");
+  ui.scenes.select.hazard2.bg.off("click").on("click", battleHazard.bind(this, hazard2));
   ui.scenes.select.hazard2.value.html(hazard2.values[game.stage-1]);
   ui.scenes.select.hazard2.freeactions.html(hazard2.freeactions);
-  //ui.scenes.select.hazard1.reward;
+  ui.scenes.select.hazard2.reward.off("click").on("click", function(e) {
+    var s = `${hazard2.reward.name}\nVALUE: ${hazard2.reward.value}`;
+    s += hazard2.reward.skill ? `\nSKILL: ${getKeyFromValue(Skill, hazard2.reward.skill.skill)} ${hazard2.reward.skill.value}` : "";
+    alert(s);
+    e.stopPropagation();
+  });
   ui.scenes.select.bg.removeClass("hidden");
+  ui.scenes.battle.bg.addClass("hidden");
 }
 let game, ui;
 (function() {
@@ -210,7 +318,7 @@ let game, ui;
         showStage();
         console.log("stage", game.stage);
         game.hazards = game.discardedhazards;
-        random.shuffle(game.hazards);
+        game.hazards = shuffle(game.hazards);
         game.discardedhazards = [];
     }
     if (game.stage === 4) {
