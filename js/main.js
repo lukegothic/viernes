@@ -27,6 +27,7 @@ class Game {
     this.actioncost = 1;
     this.actions = [];
     this.discardedactions = [];
+    this.battleactions = [];
     this.nerdactions = [];
     this.hazards = [];
     this.discardedhazards = [];
@@ -89,6 +90,7 @@ function setup() {
     game.actions.push(new Action("0", 0));
   }
   game.actions.push(new Action("0+2LIFE", 0, new ActionSkill(Skill.LIFE, 2)));
+  game.actions.push(new Action("0+2DRAW", 0, new ActionSkill(Skill.DRAW, 2)));
   for (let i = 0; i < 5; i++) {
       game.actions.push(new Action("-1", -1));
   }
@@ -200,79 +202,137 @@ function getAction() {
   }
   return game.actions.pop();
 }
-function surrender(hazard, actions) {
-  hazardlife = getScoreDiff(hazard, actions);
-  console.log("Surrender", hazardlife);
-  game.discardedhazards.push(hazard);
-  beginDestroyingByLife(actions, hazardlife);
-}
-function beginDestroyingBySkill(actions, count) {
+function beginDestroyingBySkill(count) {
   console.log("destrir por skill", count);
 }
-function beginDestroyingByLife(actions, life) {
+function beginDestroyingByLife(life) {
   console.log("destrir por vida", life);
 }
-function discardActions(actions) {
-  game.discardedactions = game.discardedactions.concat(actions);
+function discardActions() {
+  game.discardedactions = game.discardedactions.concat(game.battleactions);
+  game.battleactions = [];
 }
-function finishDestroying(actions) {
-  discardActions(actions);
+function finishDestroying() {
+  discardActions();
 }
-function conquer(hazard, actions) {
+function conquer() {
   console.log("conquer");
-  game.discardedactions.push(hazard.reward);
-  discardActions(actions);
+  game.discardedactions.push(game.currenthazard.reward);
+  discardActions();
+}
+function surrender() {
+  hazardlife = getScoreDiff();
+  console.log("Surrender", hazardlife);
+  game.discardedhazards.push(game.currenthazard);
+  beginDestroyingByLife(hazardlife);
+}
+function win() {
+  console.log("WIN");
 }
 function lose() {
   console.log("LOSE");
 }
-function getScoreDiff(hazard, actions) {
-  return hazard.values[game.stage-1] - actions.reduce((sum, action) => sum + action.value, 0);
+function getScoreDiff() {
+  return game.currenthazard.values[game.stage-1] - game.battleactions.reduce((sum, action) => sum + action.value, 0);
+}
+function performSkill(skill) {
+  return new Promise((resolve, reject) => {
+    switch(skill.skill) {
+      case Skill.LIFE:
+        game.health += skill.value;
+        showHealth();
+        resolve();
+      break;
+      case Skill.DRAW:
+        for (let n = 0; n < skill.value; n++) {
+          performAction();
+        }
+        resolve();
+      break;
+      case Skill.DOUBLE:
+      break;
+      case Skill.DESTROY:
+      break;
+      case Skill.BELOW:
+      break;
+      case Skill.COPY:
+      break;
+      case Skill.EASY:
+      break;
+      case Skill.SORT:
+      break;
+      case Skill.EXCHANGE:
+      break;
+      case Skill.HIGHESTISZERO:
+        console.log("HIGHESTISZERO");
+      break;
+      case Skill.STOP:
+      console.log("STOP");
+      break;
+    }
+  });
+}
+function performAction() {
+  var action = getAction();
+  console.log(action);
+  if (action) {
+    game.battleactions.push(action);
+    if (game.battleactions.length === 1) {
+      ui.scenes.battle.surrender.removeClass("hidden");
+    }
+    hazardlife = getScoreDiff();
+    ui.scenes.battle.value.html(hazardlife);
+    if (hazardlife <= 0) {
+      conquer();
+    } else {
+      // anadir skills al pool if any, las skills de las cartas aged se ejecutan auto
+      if (action.skill) {
+        if (!action.aged) {
+          $("<li>").on("click", function() {
+            performSkill(action.skill).then(() => {
+              $(this).remove();
+            });
+          }).append($("<a>").html(`${getKeyFromValue(Skill, action.skill.skill)} ${action.skill.value}`)).appendTo(ui.scenes.battle.skills);
+        } else {
+          performSkill(action.skill);
+        }
+      }
+      if (game.battleactions.length === game.currenthazard.freeactions) {
+        ui.scenes.battle.performAction.html("^-1^");
+      }
+    }
+  } else {
+    lose();
+  }
 }
 function battleHazard(hazard) {
   console.log(hazard);
-  var actions = [];
-  var skills = [];
+  game.currenthazard = hazard;
   ui.scenes.battle.bg.css("background", "url(http://via.placeholder.com/480x320) no-repeat");
-  ui.scenes.battle.value.html(hazard.values[game.stage-1]);
+  ui.scenes.battle.skills.empty();
+  ui.scenes.battle.value.html(game.currenthazard.values[game.stage-1]);
   ui.scenes.battle.performAction.html("FR").off("click").on("click", function(e) {
-    var isFreeAction = actions.length < hazard.freeactions;
-    if (!isFreeAction && game.health === 0) {
-      if (skills.length === 0 || confirm("aun puedes usar habilidades. quieres suic.?")) {
-        return lose();
+    var isFreeAction = game.battleactions.length < game.currenthazard.freeactions;
+    if (isFreeAction || game.health > 0) {
+      if (!isFreeAction) {
+        game.health--;
+        showHealth();
       }
-    }
-    if (!isFreeAction) {
-      game.health--;
-      showHealth();
-    }
-    var action = getAction();
-    console.log(action);
-    if (action) {
-      actions.push(action);
-      if (actions.length === 1) {
-        ui.scenes.battle.surrender.removeClass("hidden");
-      }
-      hazardlife = getScoreDiff(hazard, actions);
-      ui.scenes.battle.value.html(hazardlife);
-      if (hazardlife <= 0) {
-        conquer(hazard, actions);
-      } else {
-        // anadir skills al pool if any, las skills de las cartas aged se ejecutan auto
-        if (actions.length === hazard.freeactions) {
-          ui.scenes.battle.performAction.html("-1^");
-        }
-      }
+      performAction();
     } else {
-      console.log("the end");
+      if (ui.scenes.battle.skills.find("li").length > 0) {
+        alert("No tienes vida para hacer acciones, pero puedes usar habilidades");
+      } else {
+        lose();
+      }
     }
     e.stopPropagation();
   });
   ui.scenes.battle.surrender.addClass("hidden").off("click").on("click", function(e) {
-    if (actions.length < hazard.freeactions) {
-      confirm("Aun quedan gratis") && surrender(hazard, actions);
+    if (actions.length < game.currenthazard.freeactions) {
+      confirm("Aun quedan gratis") && surrender();
     } else {
-      confirm("Seguro?") && surrender(hazard, actions);
+      confirm("Seguro?") && surrender();
     }
     e.stopPropagation();
   });
